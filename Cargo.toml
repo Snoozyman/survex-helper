@@ -13,5 +13,5 @@ clap = { version = "^4.5.27",features = ["derive"] }
 
 
 [dependencies.libmnemo]
-path = "../libmnemo"
+git = "https://github.com/Snoozyman/libmnemo"
 features = ["debug"]
