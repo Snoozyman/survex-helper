@@ -1,0 +1,17 @@
+[package]
+name = "survex-helper"
+version = "0.0.1"
+edition = "2021"
+
+
+[features]
+debug = []
+
+
+[dependencies]
+clap = { version = "^4.5.27",features = ["derive"] }
+
+
+[dependencies.libmnemo]
+path = "../libmnemo"
+features = ["debug"]
