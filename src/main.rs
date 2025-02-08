@@ -1,60 +1,66 @@
 extern crate libmnemo as mnemo;
+extern crate libsurvex as survex;
 
 use clap::Parser;
+use mnemo::NemoReaderOptions;
+use survex::types::{PointName, SurvexProject};
+use survex::{mnemo::FromNemo, SurvexWriter};
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
+/// Survex helper program to transform Mnemo files to Survex format
 struct Args {
-    /// Optional, defaults to current directory
-    #[arg(short, long, default_value="./")]
-    path: String,
+    /// Select path for reading a file or directory
+    #[arg(short, long)]
+    path: Option<String>,
 
+    /// Optional, output filename, defaults to out.svx
     #[arg(short, long)]
-    test: bool,
-    /// File input: true/false
-    #[arg(short, long)]
-    file: bool,
+    output: Option<String>,
 
-    /// Dir input: true/false
-    #[arg(short, long)]
-    dir: bool,
+    /// Print only. Prints information to stdout
+    #[arg(long)]
+    print: bool,
 
     /// File prefix for mnemo files
-    #[arg(short, long, default_value="MNEMO")]
-    name: String
+    #[arg(short, long, default_value = "MNEMO")]
+    name: String,
 }
 
 fn main() {
     let args = Args::parse();
-    #[cfg(feature="debug")]
-    println!("{:?}", args);
-
-    let path = args.path;
-    if args.file {
-        handle_file(path);
-    } else if args.dir {
-        handle_dir(path, args.name);
-    } else if args.test {
+    
+    // #[cfg(feature = "debug")]
+    let path = match &args.path{
+        None => "./",
+        Some(p) => p,
+    };
+    if args.print && !path.is_empty() {
+        print(path);
+    }else {
+        let output = match args.output {
+            Some(o) => o,
+            None => "out.svx".into(),
+        };
+        handle_file(path, output);
     }
 }
 
-fn handle_file(path: String) {
+fn handle_file(path: &str, output: String) {
+    let options = NemoReaderOptions::default();
+    let reader = Box::new(mnemo::NemoReader::new(path, options).unwrap());
+    // dbg!(&reader);
+    let p = SurvexProject::from_nemo(&reader);
     
-    let file = mnemo::read_nemo_file(path);
-    match file {
-        Ok(f) => mnemo::test::debug_nemofile(f),
-        Err(e) => e.print(),
-    };
+    let wr = SurvexWriter::from(p);
+    let o = output.clone();
+    match wr.write_to_path(o) {
+        Ok(_) => println!("Success! Written to: {}", output),
+        Err(e) => eprintln!("Error: \n{}", e)
+    }
 }
-fn handle_dir(path: String, name: String) {
-
-    let f = match mnemo::read_nemo_dir(path, name) { 
-        Ok(files) => {
-            for file in files {
-                mnemo::test::debug_nemofile(file);
-            }
-        }
-        Err(_) => println!("No files found")
-    };
-    
+fn print(path: &str) {
+    let options = NemoReaderOptions::default();
+    let reader = Box::new(mnemo::NemoReader::new(path, options).unwrap());
+    println!("Reader: {}", &reader);
 }

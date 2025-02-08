@@ -5,13 +5,18 @@ edition = "2021"
 
 
 [features]
+default = ["types"]
 debug = []
-
+types = []
 
 [dependencies]
 clap = { version = "^4.5.27",features = ["derive"] }
 
+[dependencies.libsurvex]
+path = "../libsurvex"
+features = ["mnemo"]
 
 [dependencies.libmnemo]
-git = "https://github.com/Snoozyman/libmnemo"
+path = "../libmnemo"
+# git = "https://github.com/Snoozyman/libmnemo"
 features = ["debug"]

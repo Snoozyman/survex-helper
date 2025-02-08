@@ -140,10 +140,17 @@ checksum = "d75a2a4b1b190afb6f5425f10f6a8f959d2ea0b9c2b1d79553551850539e4674"
 [[package]]
 name = "libmnemo"
 version = "0.0.1"
-source = "git+https://github.com/Snoozyman/libmnemo#988d2587b64fb5eeda7e87d2b84964bf5b5eb181"
 dependencies = [
  "csv",
  "serde",
+]
+
+[[package]]
+name = "libsurvex"
+version = "0.1.0"
+dependencies = [
+ "csv",
+ "libmnemo",
 ]
 
 [[package]]
@@ -214,6 +221,7 @@ version = "0.0.1"
 dependencies = [
  "clap",
  "libmnemo",
+ "libsurvex",
 ]
 
 [[package]]
