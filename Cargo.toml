@@ -10,13 +10,17 @@ debug = []
 types = []
 
 [dependencies]
-clap = { version = "^4.5.27",features = ["derive"] }
+clap = { version = "^4.5.29",features = ["derive"] }
+toml ={ version =  "*" }
+serde ={ version = "*"}
 
 [dependencies.libsurvex]
 path = "../libsurvex"
-features = ["mnemo"]
+version = "*"
+features = ["mnemo", "debug"]
 
 [dependencies.libmnemo]
 path = "../libmnemo"
+version = "*"
 # git = "https://github.com/Snoozyman/libmnemo"
 features = ["debug"]
