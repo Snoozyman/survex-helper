@@ -6,5 +6,5 @@ Basic usage commands
 
 |command|description|
 |---------|---------|
-| **create** | Creates a new project from input fiels|
+| **create** | Creates a new project |
 | **print** | Print only |

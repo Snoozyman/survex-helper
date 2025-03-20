@@ -5,14 +5,14 @@ edition = "2021"
 
 
 [features]
-default = ["types"]
+default = ["mnemo"]
 debug = []
-types = []
+mnemo = []
 
 [dependencies]
 clap = { version = "^4.5.29",features = ["derive"] }
-toml ={ version =  "*" }
 serde ={ version = "*"}
+serde_yaml ={ version = "*"}
 
 [dependencies.libsurvex]
 path = "../libsurvex"

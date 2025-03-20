@@ -1,0 +1,18 @@
+project:
+  name: satun
+  author: Mikko Tuomikoski
+options:
+  fix:
+    point: B1
+    lat: 480117.687
+    lon: 1630191.828
+    elevation: 625.0
+  entrance:
+  - B1
+  - A1
+  equate:
+    points:
+    - from: A17
+      to: C1
+    - from: B4
+      to: A1

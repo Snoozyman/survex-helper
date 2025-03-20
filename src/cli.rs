@@ -1,29 +1,59 @@
+use clap::builder::Str;
+use survex::{MetaData, SurvexOptions, SurvexError, TrimAndLower, ErrorKind};
+use std::io::Write;
 use std::path::PathBuf;
 
-use survex::TrimAndLower;
-
-use crate::conf;
+use crate::conf::{self, EqPoint};
+#[cfg(feature = "mnemo")]
 use crate::mnemo::{NemoReader, NemoReaderOptions};
 use crate::survex::SurvexProject;
-use std::env::current_dir;
 use crate::args::Args;
 use crate::conf::Config;
 
-pub fn create(args: &Args, config: &Config, project: &str) {
-    if args.verbose { println!("Created a project {:?}\nConfig: {}\nProject: {}", args, config, project); }
+fn init_dir(path: &PathBuf) {
+    if !path.exists(){
+        std::fs::create_dir_all(path).unwrap();
+    } else {
+        println!("Path already exists");
+    }
+}
+pub fn questions() -> Config{
+    let mut config = conf::Config::default();
+    let mut pname = String::new();
+    let mut author = String::new();
+    print!("Enter project name: ");
+    std::io::stdout().flush().unwrap();
+    std::io::stdin().read_line(&mut pname).unwrap();
+    print!("Enter author name: ");
+    std::io::stdout().flush().unwrap();
+    std::io::stdin().read_line(&mut author).unwrap();
 
-    let mut output_dir = current_dir().unwrap();
+    config.project.name = pname.trim().to_lowercase();
+    config.project.author = author.trim().to_string();
+    config
+}
+pub fn create(args: &Args, config: &mut Config, project: &str) {
+    if args.verbose { 
+        println!("Created a project {:?}\nConfig: {}\nProject: {}", args, config, project);
+    }
+
+    let mut output_dir = std::env::current_dir().unwrap();
     if let Some(path) = &args.output {
         output_dir.push(path);
     }
     output_dir.push(project.to_lowercase().replace(" ", "-"));
 
-    survex::init_dir(&output_dir);
+    init_dir(&output_dir);
     let filename = format!("{}.svx", project.to_lowercase().replace(" ", "-"));
     output_dir.push(filename);
     let mut path = output_dir;
-    let project = from_mnemo(args, config);
-    dbg!(&project.name);
+    let project = match from_mnemo(args, config){
+        Ok(p) => p,
+        Err(e) => {
+            println!("{}", e);
+            std::process::exit(1);
+        }
+    };
     survex::write_project(&project, &path);
     println!("Created project!");
     if args.verbose {
@@ -32,21 +62,43 @@ pub fn create(args: &Args, config: &Config, project: &str) {
         println!("Project saved to: {:?}", temp);
         survex::print_project(&project);
     }
-
-    conf::write_config(config, &mut path);
+    // Writing the config
+    match conf::write_config(config, &mut path) {
+        Ok(_) => println!("Config saved to: {:?}", path),
+        Err(e) => println!("Error saving config: {}", e),
+    }
 }
 pub fn print(args: &Args, config: &Config) {
-    if args.verbose { println!("Created a project {:?}\nConfig: {}", args, config); }
-
-    let project = from_mnemo(args, config);
+    if args.verbose { 
+        println!("Created a project {:?}\nConfig: {}", args, config);
+        dbg!(config);
+    }
+    let project = match from_mnemo(args, config) {
+        Ok(p) => p,
+        Err(e) => {
+            println!("{}", e);
+            std::process::exit(1);
+        }
+    };
     survex::print_project(&project);
 }
-pub fn debug(args: &Args, config: Config) {
+pub fn debug(args: &Args, config: &Config) {
     println!("Created a debug {:?}", args);
+    conf::print_config(config);
+    if args.input.is_some() { print(args, config);}
+
+    let point = EqPoint { from: "A".to_string(), to: "B".to_string() }; 
+    let vec = vec![point];
+    dbg!(&vec);
+    match serde_yaml::to_string(&vec){
+        Ok(s) => println!("Points: {}", s),
+        Err(e) => println!("Error: {}", e),
+    }
+    
 }
 pub fn remove_project(args: &Args, project: &str) {
-    if args.verbose { println!("Removed a project {:?}\nProject: {}", args, project); }
-    let path = current_dir().unwrap().join(project);
+    if args.verbose { println!("Removing project with args: {:?}\nProject: {}", args, project); }
+    let path = std::env::current_dir().unwrap().join(project);
     if path.exists() {
         std::fs::remove_dir_all(path).unwrap();
         println!("Removed project: {}", project);
@@ -54,10 +106,15 @@ pub fn remove_project(args: &Args, project: &str) {
         println!("Project not found: {}", project);
     }
 }
-fn init(args: &Args, config: &Config) -> (NemoReader, NemoReaderOptions) {
-    // let path_buf = PathBuf::from(path);
+#[cfg(feature = "mnemo")]
+fn init_nemo(args: &Args, config: &Config) -> Result<NemoReader, SurvexError> {
     let filter = args.filter.clone().unwrap_or("MNEMO".to_string());
-    let input = args.input.as_ref().unwrap();
+    let input = match args.input.clone() {
+        Some(v) => v,
+        None => {
+            return Err(SurvexError::new("No input file provided").kind(ErrorKind::Input));
+        }
+    };
 
     let options = NemoReaderOptions::new().filter(filter);
     let reader = match NemoReader::new().options(&options).load(input) {
@@ -68,14 +125,37 @@ fn init(args: &Args, config: &Config) -> (NemoReader, NemoReaderOptions) {
         }
     };
 
-    let p = SurvexProject::from(&reader);
-
-    (reader, options).to_owned()
+    Ok(reader)
 }
-fn from_mnemo(args: &Args, config: &Config) -> SurvexProject {
+#[cfg(feature = "mnemo")]
+fn from_mnemo(args: &Args, config: &Config) -> Result<SurvexProject, SurvexError> {
     let project_name = config.project.name.clone().lower().replace_whitespace('-');
 
-    let (reader, options) = init(&args, &config);
-    let p = SurvexProject::from(&reader);
-    p.name(project_name).author(&config.project.author)
+    let reader = init_nemo(args, config)?;
+    
+    let project = SurvexProject::from(&reader);
+    let options = parse_options(args, config);
+    Ok(project.name(project_name).author(&config.project.author).options(options))
+}
+pub fn parse_options(args: &Args, config: &Config) -> SurvexOptions {
+    let mut options = SurvexOptions::default();
+    if let Some(o) = &config.options {
+        if let Some(fix) = &o.fix {
+            let mfix = MetaData::new("fix", Some(fix.to_string().as_str()));
+            options.push(mfix);
+        }
+        if let Some(entrances) = &o.entrance {
+            for entrance in entrances {
+                let temp = MetaData::new("entrance", Some(entrance));
+                options.push(temp);
+            }
+        }
+        if let Some(equate) = &o.equate {
+            for point in &equate.points {
+                let point = MetaData::new("equate", Some(&point.to_string()));
+                options.push(point);
+            }
+        }
+    }
+    options
 }

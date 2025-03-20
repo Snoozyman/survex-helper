@@ -38,8 +38,11 @@ pub enum Commands {
         project: Option<String>,
 
     },
+    /// Prints the project only
     Print,
+    /// Debugs the project
     Debug,
+    /// Remoes project directory
     Remove {
         /// Name of the project
         project: Option<String>,
