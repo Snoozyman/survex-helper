@@ -1,9 +1,11 @@
 /target
 /test_data
+/satun
 Cargo.lock
 *.csv
 *.svx
 *.txt
 *.3d
 *.err
-/my-project
+
+.DS_Store
