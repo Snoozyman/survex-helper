@@ -54,7 +54,8 @@ pub fn create(args: &Args, config: &mut Config, project: &str) {
             std::process::exit(1);
         }
     };
-    survex::write_project(&project, &path);
+    
+    survex::write_project(&project, path.as_os_str().to_str().unwrap());
     println!("Created project!");
     if args.verbose {
         let mut temp = path.clone();
